@@ -1,16 +1,17 @@
-#include "neuron/config.hpp"
+#include "neuron/ai_client.hpp"
 
 #include <iostream>
 
 int main() {
     neuron::Config config;
+    neuron::AIClient client(config);
 
-    // Attempt to retrieve the api key
-    auto apiKey = config.getNeuronApiKey();
-    if (apiKey) {
-        std::cout << "key: " << *apiKey << std::endl;
+    auto result = client.run("how to create a zip file", neuron::Mode::RUN);
+
+    if (result) {
+        std::cout << "Neuron: " << *result << std::endl;
     } else {
-        std::cout << "key not found." << std::endl;
+        std::cerr << "Failed to get a response from the Neuron." << std::endl;
     }
 
     return 0;

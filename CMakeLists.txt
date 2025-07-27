@@ -5,22 +5,30 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Treat all warnings as errors
+# Treat warnings as errors
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options(-Wall -Wextra -Werror -pedantic)
 endif()
 
-# Output path
+# Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Include public headers
+# Include headers
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Dependency management
-# find_package(...)
+# Dependencies
+find_package(CURL REQUIRED)
 
-# Source files
+include(FetchContent)
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(json)
+
+# Sources
 set(SOURCES
     src/main.cpp
     src/cli.cpp
@@ -28,5 +36,9 @@ set(SOURCES
     src/ai_client.cpp
 )
 
-# Executable
+# Define the executable target BEFORE linking
 add_executable(neuron ${SOURCES})
+
+# Then link the dependencies
+target_link_libraries(neuron PRIVATE CURL::libcurl)
+target_link_libraries(neuron PRIVATE nlohmann_json::nlohmann_json)
