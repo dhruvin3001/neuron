@@ -28,6 +28,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+FetchContent_Declare(
+  cxxopts
+  GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+  GIT_TAG v3.1.1
+)
+FetchContent_MakeAvailable(cxxopts)
+
 # Sources
 set(SOURCES
     src/main.cpp
@@ -42,3 +49,4 @@ add_executable(neuron ${SOURCES})
 # Then link the dependencies
 target_link_libraries(neuron PRIVATE CURL::libcurl)
 target_link_libraries(neuron PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(neuron PRIVATE cxxopts::cxxopts)
