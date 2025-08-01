@@ -8,6 +8,17 @@ CLI::CLI(int argc, char** argv)
     : argc_(argc), argv_(argv) {}
 
 int CLI::run() {
+    if (argc_ >= 3 && std::string(argv_[1]) == "run") {
+        std::string command = join_args(2);
+        return handle_run(command);
+    }
+
+    if (argc_ >= 3 && std::string(argv_[1]) == "tell") {
+        std::string command = join_args(2);
+        return handle_tell(command);
+    }
+
+    // fallback to original flag-based parsing
     try {
         cxxopts::Options options("neuron", "AI-powered developer CLI assistant");
 
@@ -38,6 +49,17 @@ int CLI::run() {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
+}
+
+std::string CLI::join_args(int start_index) const {
+    std::ostringstream ss;
+    for (int i = start_index; i < argc_; ++i) {
+        if (i > start_index) {
+            ss << " ";
+        }
+        ss << argv_[i];
+    }
+    return ss.str();
 }
 
 int CLI::handle_run(const std::string& prompt) {
