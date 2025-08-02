@@ -27,13 +27,13 @@ void Config::load() {
 std::optional<std::string> Config::getNeuronApiKey() const {
     // Get the API key from the environment variables first
     const char* apiKey = std::getenv(NEURON_API_KEY_ENV);
-    if (apiKey) {
+    if (apiKey && strlen(apiKey) > 0) {
         return std::optional<std::string>(apiKey);
     }
 
     // If not found, check the config map
     auto it = _configMap.find(NEURON_API_KEY_ENV);
-    if (it != _configMap.end()) {
+    if (it != _configMap.end() && !it->second.empty()) {
         return std::optional<std::string>(it->second);
     }
 
