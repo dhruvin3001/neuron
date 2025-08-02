@@ -11,6 +11,11 @@ enum class Mode {
     TELL, // for explanation mode
 };
 
+struct Prompt {
+    std::string system_message;
+    std::string user_template;
+};
+
 class AIClient {
 public:
     explicit AIClient(const Config& config);
@@ -20,7 +25,8 @@ public:
 private:
     std::string api_key_;
     std::string model_;
-    std::string build_prompt(const std::string& input, Mode mode) const;
+
+    Prompt build_prompt(const std::string& input, Mode mode) const;
 };
 
 } // namespace neuron

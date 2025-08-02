@@ -20,14 +20,60 @@ AIClient::AIClient(const Config& config) {
     model_ = "openai/gpt-4.1"; // Default model
 }
 
-std::string AIClient::build_prompt(const std::string& input, Mode mode) const {
-    switch(mode) {
+Prompt AIClient::build_prompt(const std::string& input, Mode mode) const {
+    Prompt prompt;
+    
+    switch (mode) {
         case Mode::RUN:
-            return "Understand the request and give macOS terminal command which can be directly executed (give only terminal command): " + input;
+            prompt.system_message = R"(You are an expert system administrator and command-line specialist with deep knowledge of Unix/Linux and macOS systems.
+                                    ROLE: Generate safe, efficient shell commands based on user requests.
+                                    CONSTRAINTS:
+                                        - Only output the command itself, no explanations unless requested
+                                        - Prioritize safety: avoid destructive operations without explicit confirmation
+                                        - Use modern, cross-platform commands when possible
+                                        - For macOS, prefer built-in tools or common package managers (brew, port)
+                                        - For complex operations, break into multiple safe commands
+                                        - Always use proper quoting and escaping
+                                        - If the request is ambiguous, choose the safest interpretation
+                                    OUTPUT FORMAT: Return only the command(s), one per line. No markdown, no explanations.
+                                    SAFETY RULES:
+                                        - Never suggest: rm -rf /, dd commands on system disks, chmod 777 on system files
+                                        - For file operations, use relative paths unless absolute paths are explicitly requested
+                                        - When modifying system files, suggest backup commands first
+                                        - For network operations, prefer secure protocols (https, ssh, etc.)
+                                    EXAMPLES:
+                                        User: "list files in current directory" → "ls -la"
+                                        User: "find large files" → "find . -type f -size +100M -exec ls -lh {} \;"
+                                        User: "install node" → "brew install node" (macOS) or "curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs" (Linux))";
+            prompt.user_template = "Generate a shell command for: " + input;
+            break;
         case Mode::TELL:
-        default:
-            return "Explain the task in concise terms: " + input;
+            prompt.system_message = R"(You are a knowledgeable technical assistant with expertise across software development, system administration, and general computing topics.
+                                    ROLE: Provide clear, accurate, and helpful explanations tailored to the user's apparent technical level.
+                                    RESPONSE STYLE:
+                                        - Start with a concise direct answer
+                                        - Follow with relevant details and context
+                                        - Use examples when helpful
+                                        - Structure information logically (overview → details → examples)
+                                        - Adjust technical depth based on the question complexity
+                                    AREAS OF EXPERTISE:
+                                        - Programming languages and frameworks
+                                        - System administration and DevOps
+                                        - Command-line tools and scripting
+                                        - Software architecture and design patterns
+                                        - Development workflows and best practices
+                                        - Troubleshooting and debugging
+                                    FORMAT:
+                                        - Use bullet points for lists
+                                        - Include code examples in backticks when relevant
+                                        - Highlight important concepts
+                                        - Provide actionable information when possible
+                                    TONE: Professional but approachable, like a senior colleague explaining something to a peer.)";
+            prompt.user_template = "Please explain: " + input;
+            break;
     }
+
+    return prompt;
 }
 
 static size_t curl_write_callback(void* contents, size_t size, size_t nmemb, std::string* output) {
@@ -37,16 +83,17 @@ static size_t curl_write_callback(void* contents, size_t size, size_t nmemb, std
 }
 
 std::optional<std::string> AIClient::run(const std::string& user_input, Mode mode) {
-    std::string prompt = build_prompt(user_input, mode);
+    Prompt prompt = build_prompt(user_input, mode);
     std::string response_string;
 
     json request_body = {
         {"model", model_},
         {"messages", {
-            {{"role", "user"}, {"content", prompt}}
+            {{"role", "system"}, {"content", prompt.system_message}},
+            {{"role", "user"}, {"content", prompt.user_template}}
         }},
-        {"max_tokens", 100},
-        {"temperature", 0.3}
+        {"max_tokens", mode == Mode::RUN ? 150 : 500},  // Shorter for commands, longer for explanations
+        {"temperature", mode == Mode::RUN ? 0.1 : 0.3}  // Lower temperature for commands (more deterministic)
     };
 
     CURL* curl = curl_easy_init();
