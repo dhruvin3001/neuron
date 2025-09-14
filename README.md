@@ -4,6 +4,18 @@ A fast, safe, and intelligent command-line assistant powered by AI.
 
 ## Quick Start
 
+### Option 1: Interactive Setup (Recommended)
+```bash
+# Run the interactive setup wizard
+neuron setup
+
+# This will guide you through:
+# 1. Setting up your API key
+# 2. Choosing your preferred AI model
+# 3. Configuring other preferences
+```
+
+### Option 2: Manual Setup
 1. **Get your API key** from GitHub Models or OpenAI
 2. **Set your API key**:
    ```bash
@@ -36,6 +48,45 @@ make
 - CMake 3.20+
 - libcurl
 - Internet connection
+
+## Setup
+
+After installation, run the setup wizard to configure Neuron:
+
+```bash
+neuron setup
+```
+
+This interactive setup will:
+1. **API Key Setup**: Enter your AI API key from GitHub Models or OpenAI
+2. **Model Selection**: Choose from available AI models:
+   - GPT-4 Omni (most capable)
+   - GPT-4 Omni Mini (faster, cost-effective)
+   - Claude 3.5 Sonnet (excellent reasoning)
+   - Llama 3.1 70B (open source)
+
+### Individual Setup Commands
+
+```bash
+# Set up API key only
+neuron setup --api-key
+
+# Choose model only
+neuron setup --model
+```
+
+### Getting API Keys
+
+**GitHub Models (Recommended)**:
+1. Visit [GitHub Models](https://github.com/marketplace/models)
+2. Sign in with your GitHub account
+3. Generate a new API key
+4. Use during setup or set `NEURON_API_KEY` environment variable
+
+**OpenAI**:
+1. Visit [OpenAI API Keys](https://platform.openai.com/api-keys)
+2. Create an account and generate an API key
+3. Note: Requires payment setup for usage
 
 ## Features
 
@@ -81,12 +132,28 @@ neuron run "list directory contents" --yes
 
 ## Configuration
 
-Neuron looks for configuration in:
+### Setup Command
+Neuron provides an interactive setup wizard to configure your system:
+
+```bash
+# Interactive setup wizard
+neuron setup
+
+# Individual setup options
+neuron setup --api-key          # Set API key only
+neuron setup --model            # Choose AI model only
+neuron setup --show-config      # Display current configuration
+```
+
+### Configuration Sources
+Neuron looks for configuration in this order:
 1. Environment variables
 2. `.env` file in current directory
+3. User configuration file (`~/.neuron/config`)
 
 ### Environment Variables
 - `NEURON_API_KEY` - Your AI API key (required)
+- `NEURON_MODEL` - Preferred AI model (optional)
 
 ## Safety
 
