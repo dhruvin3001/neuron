@@ -1,6 +1,7 @@
 #include "neuron/cli.hpp"
 #include <cxxopts.hpp>
 #include <iostream>
+#include <sstream>
 
 namespace neuron {
 
@@ -27,6 +28,15 @@ int CLI::run() {
         return handle_tell(command);
     }
 
+    if (argc_ >= 2 && std::string(argv_[1]) == "setup") {
+        if (argc_ >= 3) {
+            std::string option = argv_[2];
+            return handle_setup(option);
+        } else {
+            return handle_setup();
+        }
+    }
+
     // fallback to original flag-based parsing
     try {
         cxxopts::Options options("neuron", "AI-powered developer CLI assistant");
@@ -42,6 +52,9 @@ int CLI::run() {
         if (result.count("help") || !result.count("mode") || !result.count("prompt")) {
             std::cout << "\n\033[1;35m🧬 Neuron AI\033[0m - Your intelligent command-line assistant\n" << std::endl;
             std::cout << "\033[1;32mUsage:\033[0m" << std::endl;
+            std::cout << "  \033[1;36mneuron setup\033[0m                            \033[2;37m# Interactive setup wizard\033[0m" << std::endl;
+            std::cout << "  \033[1;36mneuron setup\033[0m \033[1;33m--api-key\033[0m               \033[2;37m# Set API key only\033[0m" << std::endl;
+            std::cout << "  \033[1;36mneuron setup\033[0m \033[1;33m--model\033[0m                 \033[2;37m# Choose AI model\033[0m" << std::endl;
             std::cout << "  \033[1;36mneuron run\033[0m \"find large files\"          \033[2;37m# Generate & execute commands\033[0m" << std::endl;
             std::cout << "  \033[1;36mneuron run\033[0m \"install docker\" \033[1;33m--yes\033[0m     \033[2;37m# Auto-execute without confirmation\033[0m" << std::endl;
             std::cout << "  \033[1;36mneuron tell\033[0m \"explain git rebase\"       \033[2;37m# Get explanations\033[0m" << std::endl;
@@ -96,7 +109,7 @@ bool CLI::is_potentially_dangerous(const std::string& command) const {
         "sudo", "rm -rf", "rm -r", "rm -f", "dd if=", "mkfs",
         "fdisk", "format", "del /", "rmdir /s", "> /dev/"
     };
-    
+
     for (const auto& pattern : dangerous_patterns) {
         if (command.find(pattern) != std::string::npos) {
             return true;
@@ -131,7 +144,7 @@ int CLI::handle_run(const std::string& prompt, const bool auto_execute) {
     if (command.find('|') != std::string::npos || command.find("&&") != std::string::npos) {
         std::cout << "\n\033[2;37m💡 This command chains multiple operations\033[0m" << std::endl;
     }
-    
+
     // Check for potentially dangerous commands
     bool is_dangerous = is_potentially_dangerous(command);
     
@@ -199,6 +212,132 @@ int CLI::handle_tell(const std::string& prompt) {
         std::cout << "\033[2;37m💡 Check your internet connection and API key\033[0m" << std::endl;
         return 1;
     }
+}
+
+int CLI::handle_setup(const std::string& option) {
+    if (option == "--api-key") {
+        setup_api_key();
+        return 0;
+    } else if (option == "--model") {
+        setup_model();
+        return 0;
+    } else if (option.empty()) {
+        interactive_setup();
+        return 0;
+    } else {
+        std::cout << "Unknown setup option: " << option << std::endl;
+        std::cout << "Available options: --api-key, --model" << std::endl;
+        return 1;
+    }
+}
+
+void CLI::setup_api_key() {
+    std::cout << "\n🧬 Neuron AI Setup - API Key Configuration\n" << std::endl;
+    std::cout << "Please enter your API key from GitHub Models or OpenAI:" << std::endl;
+    std::cout << "API Key: ";
+
+    std::string api_key;
+    std::getline(std::cin, api_key);
+
+    if (api_key.empty()) {
+        std::cout << "❌ API key cannot be empty." << std::endl;
+        return;
+    }
+
+    neuron::Config config;
+    if (config.setApiKey(api_key)) {
+        std::cout << "✅ API key saved successfully!" << std::endl;
+    } else {
+        std::cout << "❌ Failed to save API key." << std::endl;
+    }
+}
+
+void CLI::setup_model() {
+    std::cout << "\n🧬 Neuron AI Setup - Model Configuration\n" << std::endl;
+
+    auto models = neuron::Config::getAvailableModels();
+    std::cout << "Available models:" << std::endl;
+
+    for (size_t i = 0; i < models.size(); ++i) {
+        std::cout << "  " << (i + 1) << ". " << models[i] << std::endl;
+    }
+
+    std::cout << "\nEnter your choice (1-" << models.size() << "): ";
+
+    std::string choice_str;
+    std::getline(std::cin, choice_str);
+
+    try {
+        int choice = std::stoi(choice_str);
+        if (choice < 1 || choice > static_cast<int>(models.size())) {
+            std::cout << "❌ Invalid choice. Please select a number between 1 and " << models.size() << std::endl;
+            return;
+        }
+
+        std::string selected_model = models[choice - 1];
+        neuron::Config config;
+
+        if (config.setModel(selected_model)) {
+            std::cout << "✅ Model set to: " << selected_model << std::endl;
+        } else {
+            std::cout << "❌ Failed to save model configuration." << std::endl;
+        }
+
+    } catch (const std::exception&) {
+        std::cout << "❌ Invalid input. Please enter a number." << std::endl;
+    }
+}
+
+void CLI::interactive_setup() {
+    std::cout << "\n🧬 Welcome to Neuron AI Setup!\n" << std::endl;
+    std::cout << "This will help you configure Neuron for your use.\n" << std::endl;
+
+    // Check if API key already exists
+    neuron::Config config;
+    auto existing_key = config.getNeuronApiKey();
+
+    if (existing_key) {
+        std::cout << "✅ API key is already configured." << std::endl;
+        std::cout << "Would you like to update it? (y/N): ";
+        std::string update_key;
+        std::getline(std::cin, update_key);
+
+        if (update_key == "y" || update_key == "Y" || update_key == "yes") {
+            setup_api_key();
+        }
+    } else {
+        std::cout << "🔑 Step 1: API Key Configuration" << std::endl;
+        std::cout << "You need an API key from GitHub Models or OpenAI to use Neuron." << std::endl;
+        std::cout << "\nGet your key from:" << std::endl;
+        std::cout << "  • GitHub Models: https://github.com/marketplace/models" << std::endl;
+        std::cout << "  • OpenAI: https://platform.openai.com/api-keys" << std::endl;
+        std::cout << "\nPress Enter to continue...";
+        std::cin.get();
+
+        setup_api_key();
+    }
+    
+    std::cout << "\n🤖 Step 2: Model Selection" << std::endl;
+    auto existing_model = config.getNeuronModel();
+
+    if (existing_model) {
+        std::cout << "Current model: " << *existing_model << std::endl;
+        std::cout << "Would you like to change it? (y/N): ";
+        std::string change_model;
+        std::getline(std::cin, change_model);
+
+        if (change_model == "y" || change_model == "Y" || change_model == "yes") {
+            setup_model();
+        }
+    } else {
+        setup_model();
+    }
+
+    std::cout << "\n🎉 Setup complete!" << std::endl;
+    std::cout << "\nYou can now try:" << std::endl;
+    std::cout << "  neuron run \"list files in current directory\"" << std::endl;
+    std::cout << "  neuron tell \"what is git\"" << std::endl;
+    std::cout << "\nFor help: neuron --help" << std::endl;
 }
 
 } // namespace neuron

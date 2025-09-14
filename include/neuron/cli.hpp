@@ -23,6 +23,12 @@ private:
     // Command handlers
     int handle_run(const std::string& command, const bool auto_execute = false);
     int handle_tell(const std::string& command);
+    int handle_setup(const std::string& option = "");
+
+    // Setup helper methods
+    void setup_api_key();
+    void setup_model();
+    void interactive_setup();
 };
 
 } // namespace neuron

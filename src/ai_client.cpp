@@ -17,7 +17,10 @@ AIClient::AIClient(const Config& config) {
     }
 
     api_key_ = *key;
-    model_ = "openai/gpt-4.1"; // Default model
+
+    // Get configured model or use default
+    auto configured_model = config.getNeuronModel();
+    model_ = configured_model ? *configured_model : "openai/gpt-4";
 }
 
 Prompt AIClient::build_prompt(const std::string& input, Mode mode) const {
@@ -113,7 +116,7 @@ std::optional<std::string> AIClient::run(const std::string& user_input, Mode mod
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L); // Set timeout to 10 seconds
 
     CURLcode res = curl_easy_perform(curl);
-    
+
     // Get HTTP response code
     long response_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
