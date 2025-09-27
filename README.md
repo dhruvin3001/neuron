@@ -1,6 +1,6 @@
 # 🧬 Neuron AI
 
-A fast, safe, and intelligent command-line assistant powered by AI.
+A fast, safe, and intelligent command-line assistant powered by AI that automatically detects your operating system and provides system-specific command suggestions.
 
 ## Quick Start
 
@@ -120,7 +120,14 @@ neuron tell "how to set up nginx reverse proxy"
 neuron tell "explain docker containers"
 ```
 
-### Safety Features
+## Safety
+
+Neuron includes built-in safety features:
+- Detects potentially dangerous commands
+- Requires confirmation for destructive operations
+- Never suggests system-breaking commands
+- Validates user input
+
 ```bash
 # Dangerous commands will prompt for confirmation
 neuron run "delete temporary files"
@@ -154,11 +161,3 @@ Neuron looks for configuration in this order:
 ### Environment Variables
 - `NEURON_API_KEY` - Your AI API key (required)
 - `NEURON_MODEL` - Preferred AI model (optional)
-
-## Safety
-
-Neuron includes built-in safety features:
-- Detects potentially dangerous commands
-- Requires confirmation for destructive operations
-- Never suggests system-breaking commands
-- Validates user input
