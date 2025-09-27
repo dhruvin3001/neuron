@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <sys/utsname.h>
 
 namespace neuron {
 
@@ -21,6 +22,25 @@ AIClient::AIClient(const Config& config) {
     // Get configured model or use default
     auto configured_model = config.getNeuronModel();
     model_ = configured_model ? *configured_model : "openai/gpt-4";
+
+    // Detect OS
+    struct utsname uts;
+    if (uname(&uts) == 0) {
+        std::string sysname = uts.sysname;
+        if (sysname == "Darwin") {
+            os_ = "macOS";
+        } else if (sysname == "Linux") {
+            os_ = "Linux";
+        } else if (sysname == "Windows") {
+            os_ = "Windows";
+        } else {
+            os_ = sysname; // Use the raw sysname for unknown systems
+        }
+    } else {
+        // Default to Linux if detection fails
+        std::cerr << "Warning: Unable to detect OS, defaulting to Linux." << std::endl;
+        os_ = "Linux";
+    }
 }
 
 Prompt AIClient::build_prompt(const std::string& input, Mode mode) const {
@@ -28,7 +48,7 @@ Prompt AIClient::build_prompt(const std::string& input, Mode mode) const {
     
     switch (mode) {
         case Mode::RUN:
-            prompt.system_message = R"(You are an expert system administrator and command-line specialist with deep knowledge of Unix/Linux and macOS systems.
+            prompt.system_message = "Note that the user is on a " + os_ + " system." + R"(You are an expert system administrator and command-line specialist with deep knowledge of Unix/Linux and macOS systems.
                                     ROLE: Generate safe, efficient shell commands based on user requests.
                                     CONSTRAINTS:
                                         - Only output the command itself, no explanations unless requested
@@ -51,7 +71,7 @@ Prompt AIClient::build_prompt(const std::string& input, Mode mode) const {
             prompt.user_template = "Generate a shell command for: " + input;
             break;
         case Mode::TELL:
-            prompt.system_message = R"(You are a knowledgeable technical assistant with expertise across software development, system administration, and general computing topics.
+            prompt.system_message = "Note that the user is on a " + os_ + " system." + R"(You are a knowledgeable technical assistant with expertise across software development, system administration, and general computing topics.
                                     ROLE: Provide clear, accurate, and helpful explanations tailored to the user's apparent technical level.
                                     RESPONSE STYLE:
                                         - Start with a concise direct answer

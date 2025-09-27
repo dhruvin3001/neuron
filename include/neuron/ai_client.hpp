@@ -25,6 +25,7 @@ public:
 private:
     std::string api_key_;
     std::string model_;
+    std::string os_;
 
     Prompt build_prompt(const std::string& input, Mode mode) const;
 };
