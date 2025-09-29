@@ -1,4 +1,10 @@
 .vscode
 .env
 
-build
+# Build directories (but not build scripts)
+build/
+build-*/
+dist/
+
+# Don't ignore our build scripts
+!scripts/build-*.sh

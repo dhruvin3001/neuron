@@ -43,11 +43,18 @@ int CLI::run() {
 
         options.add_options()
             ("h,help", "Print help")
+            ("v,version", "Print version")
             ("m,mode", "Mode: run or tell", cxxopts::value<std::string>())
             ("p,prompt", "Prompt to send", cxxopts::value<std::string>())
             ("y,yes", "Auto execute the command without confirmation");
 
         auto result = options.parse(argc_, argv_);
+
+        if (result.count("version")) {
+            std::cout << "Neuron AI v1.0.0" << std::endl;
+            std::cout << "AI-powered command-line assistant" << std::endl;
+            return 0;
+        }
 
         if (result.count("help") || !result.count("mode") || !result.count("prompt")) {
             std::cout << "\n\033[1;35m🧬 Neuron AI\033[0m - Your intelligent command-line assistant\n" << std::endl;

@@ -1,0 +1,143 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            platform: linux
+            arch: x86_64
+          - os: ubuntu-20.04
+            platform: linux
+            arch: arm64
+          - os: macos-12
+            platform: macos
+            arch: x86_64
+          - os: macos-14
+            platform: macos
+            arch: arm64
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies (Ubuntu)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          pkg-config \
+          libcurl4-openssl-dev \
+          curl
+    
+    - name: Install dependencies (macOS)
+      if: startsWith(matrix.os, 'macos')
+      run: |
+        brew install cmake curl pkg-config
+    
+    - name: Setup ARM64 cross-compilation (Ubuntu)
+      if: matrix.os == 'ubuntu-20.04' && matrix.arch == 'arm64'
+      run: |
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        sudo apt-get install -y libcurl4-openssl-dev:arm64
+    
+    - name: Make build script executable
+      run: chmod +x scripts/build-static.sh
+    
+    - name: Build using our build script
+      run: ./scripts/build-static.sh
+      env:
+        NEURON_OS: ${{ startsWith(matrix.os, 'ubuntu') && 'Linux' || 'Darwin' }}
+        NEURON_ARCH: ${{ matrix.arch }}
+        CI: true
+    
+    - name: Show binary info
+      run: |
+        file dist/neuron-${{ matrix.platform }}-${{ matrix.arch }}
+        ls -lh dist/neuron-${{ matrix.platform }}-${{ matrix.arch }}
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: neuron-${{ matrix.platform }}-${{ matrix.arch }}
+        path: dist/neuron-${{ matrix.platform }}-${{ matrix.arch }}
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+    
+    - name: Prepare release assets
+      run: |
+        mkdir -p release
+        find artifacts -name "neuron-*" -type f -exec cp {} release/ \;
+        ls -la release/
+    
+    - name: Generate checksums
+      run: |
+        cd release
+        sha256sum * > checksums.txt
+        cat checksums.txt
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}
+        generate_release_notes: true
+        body: |
+          ## 🧬 Neuron AI Release ${{ github.ref_name }}
+          
+          ### Installation
+          
+          **Quick install (recommended):**
+          ```bash
+          curl -sSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+          ```
+          
+          **Manual download:**
+          - **macOS (Intel)**: `neuron-macos-x86_64`
+          - **macOS (Apple Silicon)**: `neuron-macos-arm64`  
+          - **Linux (Intel)**: `neuron-linux-x86_64`
+          - **Linux (ARM64)**: `neuron-linux-arm64`
+          
+          ### Setup
+          1. Download the appropriate binary for your platform
+          2. Make it executable: `chmod +x neuron-*`
+          3. Move to PATH: `sudo mv neuron-* /usr/local/bin/neuron`
+          4. Set API key: `export NEURON_API_KEY=your_key`
+          5. Try it: `neuron run "show disk usage"`
+          
+          ### Checksums
+          Verify your download with `sha256sum`:
+          ```
+          $(cat release/checksums.txt)
+          ```
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
