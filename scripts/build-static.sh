@@ -87,15 +87,19 @@ fi
 DIST_DIR="../dist"
 mkdir -p "$DIST_DIR"
 
-# Copy binary with OS/ARCH suffix
-case "$OS" in
-    "Darwin")
-        BINARY_NAME="neuron-macos-$ARCH"
-        ;;
-    "Linux")
-        BINARY_NAME="neuron-linux-$ARCH"
-        ;;
-esac
+# Copy binary with custom name if provided, otherwise use OS/ARCH suffix
+if [ -n "$NEURON_NAME" ]; then
+    BINARY_NAME="neuron-$NEURON_NAME"
+else
+    case "$OS" in
+        "Darwin")
+            BINARY_NAME="neuron-macos-$ARCH"
+            ;;
+        "Linux")
+            BINARY_NAME="neuron-linux-$ARCH"
+            ;;
+    esac
+fi
 
 cp bin/neuron "$DIST_DIR/$BINARY_NAME"
 
