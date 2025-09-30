@@ -1,5 +1,6 @@
 #include "neuron/config.hpp"
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 
