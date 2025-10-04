@@ -16,15 +16,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
-            platform: linux
-            arch: x86_64
-          - os: ubuntu-20.04
-            platform: linux
-            arch: arm64
-          - os: macos-12
-            platform: macos
-            arch: x86_64
+          # - os: ubuntu-20.04
+          #   platform: linux
+          #   arch: x86_64
+          # - os: ubuntu-20.04
+          #   platform: linux
+          #   arch: arm64
+          # - os: macos-12
+          #   platform: macos
+          #   arch: x86_64
           - os: macos-14
             platform: macos
             arch: arm64
