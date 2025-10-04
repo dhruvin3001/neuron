@@ -14,26 +14,40 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           # - os: ubuntu-20.04
           #   platform: linux
           #   arch: x86_64
-          # - os: ubuntu-20.04
+          #   name: ubuntu20
+          # - os: ubuntu-22.04
           #   platform: linux
-          #   arch: arm64
-          # - os: macos-12
-          #   platform: macos
-          #   arch: x86_64
+          #   arch: x86_64  
+          #   name: ubuntu22
           - os: macos-14
             platform: macos
             arch: arm64
+            name: macos
     
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30  # Prevent jobs from hanging indefinitely
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    
+    - name: Debug runner info
+      run: |
+        echo "Runner OS: ${{ runner.os }}"
+        echo "Matrix OS: ${{ matrix.os }}"
+        echo "Matrix Platform: ${{ matrix.platform }}"
+        echo "Matrix Arch: ${{ matrix.arch }}"
+        echo "Available disk space:"
+        df -h
+        echo "System info:"
+        uname -a
     
     - name: Install dependencies (Ubuntu)
       if: startsWith(matrix.os, 'ubuntu')
@@ -43,19 +57,13 @@ jobs:
           build-essential \
           cmake \
           pkg-config \
-          libcurl4-openssl-dev \
-          curl
+          libssl-dev \
+          zlib1g-dev
     
     - name: Install dependencies (macOS)
       if: startsWith(matrix.os, 'macos')
       run: |
         brew install cmake curl pkg-config
-    
-    - name: Setup ARM64 cross-compilation (Ubuntu)
-      if: matrix.os == 'ubuntu-20.04' && matrix.arch == 'arm64'
-      run: |
-        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-        sudo apt-get install -y libcurl4-openssl-dev:arm64
     
     - name: Make build script executable
       run: chmod +x scripts/build-static.sh
@@ -65,23 +73,26 @@ jobs:
       env:
         NEURON_OS: ${{ startsWith(matrix.os, 'ubuntu') && 'Linux' || 'Darwin' }}
         NEURON_ARCH: ${{ matrix.arch }}
+        NEURON_NAME: ${{ matrix.name }}
         CI: true
     
     - name: Show binary info
       run: |
-        file dist/neuron-${{ matrix.platform }}-${{ matrix.arch }}
-        ls -lh dist/neuron-${{ matrix.platform }}-${{ matrix.arch }}
+        file dist/neuron-${{ matrix.name }}
+        ls -lh dist/neuron-${{ matrix.name }}
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: neuron-${{ matrix.platform }}-${{ matrix.arch }}
-        path: dist/neuron-${{ matrix.platform }}-${{ matrix.arch }}
+        name: neuron-${{ matrix.name }}
+        path: dist/neuron-${{ matrix.name }}
 
   create-release:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write  # Required to create releases
     
     steps:
     - name: Checkout code
@@ -122,10 +133,9 @@ jobs:
           ```
           
           **Manual download:**
-          - **macOS (Intel)**: `neuron-macos-x86_64`
-          - **macOS (Apple Silicon)**: `neuron-macos-arm64`  
-          - **Linux (Intel)**: `neuron-linux-x86_64`
-          - **Linux (ARM64)**: `neuron-linux-arm64`
+          - **Ubuntu 20.04 (x86_64)**: `neuron-ubuntu20`
+          - **Ubuntu 22.04 (x86_64)**: `neuron-ubuntu22`
+          - **macOS (Apple Silicon M1/M2/M3)**: `neuron-macos`
           
           ### Setup
           1. Download the appropriate binary for your platform
