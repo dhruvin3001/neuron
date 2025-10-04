@@ -18,14 +18,14 @@ jobs:
       max-parallel: 3
       matrix:
         include:
-          - os: ubuntu-20.04
-            platform: linux
-            arch: x86_64
-            name: ubuntu20
-          - os: ubuntu-22.04
-            platform: linux
-            arch: x86_64  
-            name: ubuntu22
+          # - os: ubuntu-20.04
+          #   platform: linux
+          #   arch: x86_64
+          #   name: ubuntu20
+          # - os: ubuntu-22.04
+          #   platform: linux
+          #   arch: x86_64
+          #   name: ubuntu22
           - os: macos-14
             platform: macos
             arch: arm64
