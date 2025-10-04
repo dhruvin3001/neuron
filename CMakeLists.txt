@@ -20,8 +20,10 @@ if(BUILD_STATIC)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-search_paths_first")
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS version")
     else()
-        # Linux: Full static linking
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
+        # Linux: Partial static linking (static libstdc++/libgcc, dynamic system libs)
+        # This avoids issues with glibc and other system libraries that should be dynamic
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+        # Don't use full -static flag as it causes issues with system libraries
     endif()
 endif()
 
@@ -41,14 +43,45 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Dependencies
-if(BUILD_STATIC)
-    # For static builds, use pkg-config to find static libraries
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(CURL REQUIRED libcurl)
-    set(CURL_LIBRARIES ${CURL_STATIC_LIBRARIES})
-    set(CURL_LDFLAGS ${CURL_STATIC_LDFLAGS})
+if(BUILD_STATIC AND UNIX AND NOT APPLE)
+    # For Linux static builds, build curl from source to avoid dependency issues
+    message(STATUS "Building CURL from source for static linking")
+    
+    FetchContent_Declare(
+        curl
+        GIT_REPOSITORY https://github.com/curl/curl.git
+        GIT_TAG curl-8_4_0
+    )
+    
+    # Configure curl to build as static library with minimal dependencies
+    set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(CURL_STATICLIB ON CACHE BOOL "" FORCE)
+    set(HTTP_ONLY ON CACHE BOOL "" FORCE)
+    set(CURL_USE_OPENSSL ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_LDAP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_RTSP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_PROXY ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_DICT ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_TELNET ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_TFTP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_POP3 ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_IMAP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_SMTP ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_GOPHER ON CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_SMB ON CACHE BOOL "" FORCE)
+    set(USE_LIBIDN2 OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_LIBSSH2 OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(curl)
+    
+    set(CURL_LIBRARIES libcurl)
 else()
+    # For macOS and non-static builds, use system curl
     find_package(CURL REQUIRED)
+    set(CURL_LIBRARIES CURL::libcurl)
 endif()
 
 include(FetchContent)
@@ -78,20 +111,11 @@ set(SOURCES
 add_executable(neuron ${SOURCES})
 
 # Link libraries based on build type
-if(BUILD_STATIC)
-    target_link_libraries(neuron PRIVATE 
-        nlohmann_json::nlohmann_json
-        cxxopts::cxxopts
-        ${CURL_LIBRARIES}
-    )
-    target_link_options(neuron PRIVATE ${CURL_LDFLAGS})
-else()
-    target_link_libraries(neuron PRIVATE 
-        CURL::libcurl
-        nlohmann_json::nlohmann_json
-        cxxopts::cxxopts
-    )
-endif()
+target_link_libraries(neuron PRIVATE 
+    nlohmann_json::nlohmann_json
+    cxxopts::cxxopts
+    ${CURL_LIBRARIES}
+)
 
 # Installation
 include(GNUInstallDirs)
